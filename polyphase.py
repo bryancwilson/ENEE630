@@ -3,49 +3,114 @@ import matplotlib.pyplot as plt
 
 from signal_gen import generate_input
 from plot_sp import filter_bank_plots
+from scipy import signal
 
 # High-Pass and Low-Pass Filter Coefficients
-LPF = [-1, 0, 3, 0, -8, 0, 21, 0, -45, 0, 91, 0, -191, 0, 643, 1024, 643, 0, -191, 0, 91, 0, -45, 0, 21, 0, -8, 0, 3, 0, -1]
-HPF = [1, 0, -3, 0, 8, 0, -21, 0, 45, 0, -91, 0, 191, 0, -643, 1024, -643, 0, 191, 0, -91, 0, 45, 0, -21, 0, 8, 0, -3, 0, 1]
+H0 = np.array([-1, 0, 3, 0, -8, 0, 21, 0, -45, 0, 91, 0, -191, 0, 643, 1024, 643, 0, -191, 0, 91, 0, -45, 0, 21, 0, -8, 0, 3, 0, -1])
+H1 = np.array([-1, 0, 3, 0, -8, 0, 21, 0, -45, 0, 91, 0, -191, 0, 643, -1024, 643, 0, -191, 0, 91, 0, -45, 0, 21, 0, -8, 0, 3, 0, -1])
 
-def polyphase_filter(LPF, HPF, X_n, section=1):
+# First Set of Synthesis Filters
+# F0_1 = H0(-z)
+F0_1 = np.array(H0) / np.sum(H0)
+F1_1 = -1*np.array(H1) / np.sum(H0)
+
+# Second Set of Synthesis Filters
+F0_2 = np.array(H0)
+F1_2 = np.array(H1)
+
+def analysis_filter_block(H0, H1, X_n):
     M = 2  # Number of phases
-    L = len(LPF) // M  # Length of each polyphase component
+    L = len(H0) // M  # Length of each polyphase component
 
     # Create polyphase components
-    E0_lpf = np.array([LPF[i] for i in range(0, len(LPF), M)])
-    E1_lpf = np.array([LPF[i] for i in range(1, len(LPF), M)])
-    E0_hpf = np.array([HPF[i] for i in range(0, len(HPF), M)])
-    E1_hpf = np.array([HPF[i] for i in range(1, len(HPF), M)])
+    E0_H0 = np.array([H0[i] for i in range(0, len(H0), M)])
+    E1_H0 = np.array([H0[i] for i in range(1, len(H0), M)])
+    E0_H1 = np.array([H1[i] for i in range(0, len(H1), M)])
+    E1_H1 = np.array([H1[i] for i in range(1, len(H1), M)])
 
-    # Initialize output signal
-    Y_n_top = []
-    Y_n_bot = []
+    # Split input into even and odd samples (This is the decimation step)
+    x_even = X_n[0::M]
+    
+    # We pad with 0 if odd length to ensure even/odd arrays match size (This is the split and delay step)
+    if len(X_n) % 2 != 0:
+        x_odd = np.pad(X_n[1::M], (0, 1), 'constant')
+    else:
+        x_odd = X_n[1::M]
+    
+    # (This is the filtering step and adding step)
+    # High Pass Branch
+    y_bot_even = signal.lfilter(E0_H1, 1, x_even)
+    y_bot_odd  = signal.lfilter(E1_H1, 1, x_odd)
+    Y_n_bot = y_bot_even + y_bot_odd
 
-    # Polyphase filtering
-    for n in range(0, len(X_n), M):
-        # Get input samples
-        x0 = X_n[n] if n < len(X_n) else 0
-        x1 = X_n[n + 1] if (n + 1) < len(X_n) else 0
+    # Low Pass Branch
+    y_top_even = signal.lfilter(E0_H0, 1, x_even)
+    y_top_odd  = signal.lfilter(E1_H0, 1, x_odd)
+    Y_n_top = y_top_even + y_top_odd
 
-        # Apply polyphase components
-        y0_top = np.dot(E0_lpf, [x0] + [X_n[n - i] if (n - i) >= 0 else 0 for i in range(1, len(E0_lpf))])
-        y1_top = np.dot(E1_lpf, [x1] + [X_n[n - i + 1] if (n - i + 1) >= 0 else 0 for i in range(1, len(E1_lpf))])
-        y0_bot = np.dot(E0_hpf, [x0] + [X_n[n - i] if (n - i) >= 0 else 0 for i in range(1, len(E0_hpf))])
-        y1_bot = np.dot(E1_hpf, [x1] + [X_n[n - i + 1] if (n - i + 1) >= 0 else 0 for i in range(1, len(E1_hpf))])
-        
-        Y_n_top.append(y0_top + y1_top) # Output of top branch
-        Y_n_bot.append(y0_bot + y1_bot) # output of bottom branch
+    return Y_n_top, Y_n_bot
 
-        # recursion (decompose low branch further)
+def synthesis_filter(F0, F1, Y_n_top, Y_n_bot):
+    L = 2  # Number of phases
+
+    # Create polyphase components
+    R0_H0 = np.array([F0[i] for i in range(1, len(F0), L)])
+    R1_H0 = np.array([F0[i] for i in range(0, len(F0), L)])
+    R0_H1 = np.array([F1[i] for i in range(1, len(F1), L)])
+    R1_H1 = np.array([F1[i] for i in range(0, len(F1), L)])
+
+    # (This is the filtering step and adding step)
+    # Low Pass Branch
+    x_recon_top_H0 = signal.lfilter(R0_H0, 1, Y_n_top)
+    x_recon_bot_H0 = signal.lfilter(R1_H0, 1, Y_n_top)
+
+    # High Pass Branch
+    x_recon_top_H1 = signal.lfilter(R0_H1, 1, Y_n_bot)
+    x_recon_bot_H1 = signal.lfilter(R1_H1, 1, Y_n_bot)
+
+    x_recon_even = x_recon_top_H0 + x_recon_top_H1
+    x_recon_odd = x_recon_bot_H0 + x_recon_bot_H1
+
+    # Delay and Combine Branches
+    x_reconstructed = np.zeros(2 * len(Y_n_top)) # Use complex if inputs are complex
+    
+    x_reconstructed[0::2] = x_recon_even
+    x_reconstructed[1::2] = x_recon_odd
+
+    return x_reconstructed
+
+def analysis_filter(H0, H1, X_n, section=1):
+    M = 2  # Number of phases
+    L = len(H0) // M  # Length of each polyphase component
+
+    # Create polyphase components
+    E0_H0 = np.array([H0[i] for i in range(0, len(H0), M)])
+    E1_H0 = np.array([H0[i] for i in range(1, len(H0), M)])
+    E0_H1 = np.array([H1[i] for i in range(0, len(H1), M)])
+    E1_H1 = np.array([H1[i] for i in range(1, len(H1), M)])
+
+    # Split input into even and odd samples
+    x_even = X_n[0::M]
+    
+    # We pad with 0 if odd length to ensure even/odd arrays match size
+    if len(X_n) % 2 != 0:
+        x_odd = np.pad(X_n[1::M], (0, 1), 'constant')
+    else:
+        x_odd = X_n[1::M]
+    
+    # Low Pass Branch
+    y_low_even = signal.lfilter(E0_H0, 1, x_even)
+    y_low_odd  = signal.lfilter(E1_H0, 1, x_odd)
+    Y_n_bot = y_low_even + y_low_odd
+
+    # High Pass Branch
+    y_high_even = signal.lfilter(E0_H1, 1, x_even)
+    y_high_odd  = signal.lfilter(E1_H1, 1, x_odd)
+    Y_n_top = y_high_even + y_high_odd
+
+    # recursion (decompose low branch further)
     if section == 3:
         return ['v1', [Y_n_bot]], ['v0', [Y_n_top]]
     else:
-        high_tree = polyphase_filter(LPF, HPF, Y_n_top, section=section+1)
+        high_tree = analysis_filter(H0, H1, Y_n_top, section=section+1)
         return high_tree, ['v'+str(3 - section + 1), [Y_n_bot]]
-
-X_n, bin_rep = generate_input(2, 1024)
-Y_n = polyphase_filter(LPF, HPF, X_n)
-y_n = [Y_n[0][0][0], Y_n[0][0][1], Y_n[0][1], Y_n[1]] 
-
-filter_bank_plots(HPF, LPF)
