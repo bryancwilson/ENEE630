@@ -1,26 +1,58 @@
 from polyphase import H0, H1, analysis_filter, analysis_filter_block, synthesis_filter, F0_1, F1_1, F1_2, F0_2
-from plot_sp import plot_magnitude_response
+from plot_sp import plot_magnitude_response, plot_spec
+from signal_gen import generate_input, generate_test_input, mse
 from scipy import signal
 
 import numpy as np
 import matplotlib.pyplot as plt
 
+# -------------------- Utils -----------------------
+def test_at_various_levels(X_n, test):
+    delay = 30
+    if test == 1:
+        # 1 Level Test
+        Y_n_top, Y_n_bot = analysis_filter_block(H0, H1, X_n)
+        x_n_rec = synthesis_filter(F0_1, F1_1, Y_n_top, Y_n_bot)
+    elif test == 2:
+        # 2 Level Test
+        top1, bot1 = analysis_filter_block(H0, H1, X_n)
+
+        top_t1, bot_t1 = analysis_filter_block(H0, H1, top1)
+        top_b1, bot_b1 = analysis_filter_block(H0, H1, bot1)
+
+        top_1_rec = synthesis_filter(F0_1, F1_1, top_t1, bot_t1)
+        bot_1_rec = synthesis_filter(F0_1, F1_1, top_b1, bot_b1)
+
+        # Plot top1_rec vs top1
+        top1_delayed = np.concatenate((np.zeros(delay), top1[:-delay]))
+        plt.plot(top1_delayed.real, label='Original Top1', alpha=0.7)
+        plt.plot(top_1_rec.real, label='Reconstructed Top1', alpha=0.7)
+        plt.title('Original vs Reconstructed Top1 (Real Part)')
+        plt.xlabel('Sample Index')
+        plt.ylabel('Amplitude')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+        
+        # Subplots Spectrograms of top1 and top_1_rec
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
+        pcm1 = plot_spec(ax1, top1_delayed.real, "Original Top1 Spectrogram")
+        pcm2 = plot_spec(ax2, top_1_rec.real, "Reconstructed Top1 Spectrogram")
+        fig.subplots_adjust(right=0.8)
+        cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
+        fig.colorbar(pcm1, cax=cbar_ax, label='Power (dB)')
+        plt.show()
+
+        x_n_rec = synthesis_filter(F0_1, F1_1, top_1_rec, bot_1_rec)
+
+    return x_n_rec
+
 # --- TEST BENCH FOR POLYPHASE FILTER BANK DECOMPOSITION AND RECONSTRUCTION ---
-N = 20000 # Number of samples
-duration = 1.0  # seconds
-f = N/duration  # Frequency
-fs = f*2  # Sampling frequency
-t = np.linspace(0, duration, int(fs)) # Time vector
-
-# Create an impulse signal
-impulse = np.zeros(len(H0))
-impulse[0] = 100  
-
-# Frequency Sweep (Chirp) Signal
-chirp_sig = signal.chirp(t, f0=0, t1=1, f1=f, method='linear')
+# Input Signal
+input_sig = generate_test_input()[1]  # Get the chirp signal
 
 # Analysis Filter Bank Decomposition
-Y_n_level_1_top, Y_n_level_1_bot = analysis_filter_block(H0, H1, chirp_sig)
+Y_n_level_1_top, Y_n_level_1_bot = analysis_filter_block(H0, H1, input_sig)
 Y_n_level_2_top, Y_n_level_2_bot = analysis_filter_block(H0, H1, Y_n_level_1_top)
 Y_n_level_3_top, Y_n_level_3_bot = analysis_filter_block(H0, H1, Y_n_level_2_top)
    
@@ -38,24 +70,29 @@ x_n_rec = synthesis_filter(F0_1, F1_1, x_n_rec_mid, v3)
 # --- Plotting ---
 plt.figure(figsize=(12, 8))
 
-plt.subplot(4, 1, 1)
-plt.stem(v3)
+plt.subplot(5, 1, 1)
+plt.plot(v3)
 plt.title(f"v3 (Level 1 High Pass) - Length {len(v3)}")
 plt.grid(True)
 
-plt.subplot(4, 1, 2)
-plt.stem(v2)
+plt.subplot(5, 1, 2)
+plt.plot(v2)
 plt.title(f"v2 (Level 2 High Pass) - Length {len(v2)}")
 plt.grid(True)
 
-plt.subplot(4, 1, 3)
-plt.stem(v1)
+plt.subplot(5, 1, 3)
+plt.plot(v1)
 plt.title(f"v1 (Level 3 High Pass) - Length {len(v1)}")
 plt.grid(True)
 
-plt.subplot(4, 1, 4)
-plt.stem(v0)
+plt.subplot(5, 1, 4)
+plt.plot(v0)
 plt.title(f"v0 (Level 3 Low Pass) - Length {len(v0)}")
+plt.grid(True)
+
+plt.subplot(5, 1, 5)
+plt.plot(input_sig)
+plt.title(f"v0 (Level 3 Low Pass) - Length {len(input_sig)}")
 plt.grid(True)
 
 plt.tight_layout()
@@ -72,7 +109,7 @@ def run_test(input_sig, title):
     # Calculate Delay
     delay = 30
     
-    # D. Compare
+    # Compare
     # Extract valid region (ignoring start/end transient artifacts)
     valid_len = len(input_sig) - delay
     in_crop = input_sig[:valid_len]
@@ -82,17 +119,17 @@ def run_test(input_sig, title):
     error = in_crop - out_crop
     mse = np.mean(error**2)
     
-    # E. Plot
+    # Plot
     plt.figure(figsize=(10, 6))
     
-    plt.subplot(2, 1, 1)
+    plt.subplot(1, 2, 1)
     plt.plot(input_sig, 'k', label='Input', alpha=0.5, linewidth=2)
     plt.plot(recon_sig, 'r--', label='Recon (Delayed)')
     plt.title(f"{title} - Visual Check")
     plt.legend()
     plt.grid(True)
     
-    plt.subplot(2, 1, 2)
+    plt.subplot(1, 2, 2)
     plt.plot(error, 'b')
     plt.title(f"Reconstruction Error (MSE: {mse:.2e})")
     plt.ylim([-0.1, 0.1]) # Zoom in on error
@@ -107,20 +144,18 @@ def run_test(input_sig, title):
         f, t_spec, Sxx = signal.spectrogram(x, 40000, nperseg=128, noverlap=120)
         
         # Plot in dB
-        # We use vmin=-100 to clip very quiet noise so the aliasing stands out
         pcm = ax.pcolormesh(t_spec, f, 10 * np.log10(Sxx + 1e-12), shading='gouraud', cmap='inferno', vmin=-80)
         ax.set_ylabel('Frequency (Hz)')
         ax.set_xlabel('Time (s)')
         ax.set_title(title)
         return pcm
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
 
     # Plot Input
-    plot_spec(ax1, chirp_sig, "Input Spectrogram (Clean Chirp)")
+    plot_spec(ax1, input_sig, "Input Spectrogram (Clean Chirp)")
 
     # Plot Output
-    # We ignore the startup delay transient to see the steady state behavior
     delay = 30
     valid_recon = recon_sig[delay:] 
     pcm = plot_spec(ax2, valid_recon, "Reconstructed Spectrogram")
@@ -135,5 +170,5 @@ def run_test(input_sig, title):
 
 # --- 4. EXECUTE ---
 print("Running Chirp Test (Check for Aliasing)...")
-run_test(chirp_sig, "Linear Chirp Test")
+run_test(input_sig, "Linear Chirp Test")
 print("Running Impulse Test (Check for Reconstruction)...")

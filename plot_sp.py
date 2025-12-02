@@ -44,7 +44,8 @@ def plot_signal(X_n, stochastic=True, title="Signal Plot"):
     ax3.set_xlabel('Frequency Index k')
     ax3.set_ylabel('Power (dB)')
     ax3.set_title('Magnitude Spectrum')
-    ax3.set_ylim([-60, 5])
+    if stochastic:
+        ax3.set_ylim([-60, 5])
     ax3.grid(True, alpha=0.5)
 
     ax4.plot(k, np.angle(ft_shifted))
@@ -57,6 +58,17 @@ def plot_signal(X_n, stochastic=True, title="Signal Plot"):
     plt.tight_layout()
     plt.show()
 
+def plot_spec(ax, x, title):
+    # Compute Spectrogram
+    f, t_spec, Sxx = signal.spectrogram(x, 40000, nperseg=128, noverlap=120)
+    
+    # Plot in dB
+    pcm = ax.pcolormesh(t_spec, f, 10 * np.log10(Sxx + 1e-12), shading='gouraud', cmap='inferno', vmin=-80)
+    ax.set_ylabel('Frequency (Hz)')
+    ax.set_xlabel('Time (s)')
+    ax.set_title(title)
+    return pcm
+    
 def plot_filter(H0, H1, filter_toggle, ax1, ax2, label):
 
     # Parameters

@@ -6,13 +6,13 @@ from plot_sp import filter_bank_plots
 from scipy import signal
 
 # High-Pass and Low-Pass Filter Coefficients
+GAIN = 2050
 H0 = np.array([-1, 0, 3, 0, -8, 0, 21, 0, -45, 0, 91, 0, -191, 0, 643, 1024, 643, 0, -191, 0, 91, 0, -45, 0, 21, 0, -8, 0, 3, 0, -1])
 H1 = np.array([-1, 0, 3, 0, -8, 0, 21, 0, -45, 0, 91, 0, -191, 0, 643, -1024, 643, 0, -191, 0, 91, 0, -45, 0, 21, 0, -8, 0, 3, 0, -1])
 
 # First Set of Synthesis Filters
-# F0_1 = H0(-z)
-F0_1 = np.array(H0) / np.sum(H0)
-F1_1 = -1*np.array(H1) / np.sum(H0)
+F0_1 = np.array(H0)
+F1_1 = -1*np.array(H1)
 
 # Second Set of Synthesis Filters
 F0_2 = np.array(H0)
@@ -48,7 +48,7 @@ def analysis_filter_block(H0, H1, X_n):
     y_top_odd  = signal.lfilter(E1_H0, 1, x_odd)
     Y_n_top = y_top_even + y_top_odd
 
-    return Y_n_top, Y_n_bot
+    return Y_n_top / (GAIN), Y_n_bot / (GAIN)
 
 def synthesis_filter(F0, F1, Y_n_top, Y_n_bot):
     L = 2  # Number of phases
@@ -77,7 +77,7 @@ def synthesis_filter(F0, F1, Y_n_top, Y_n_bot):
     x_reconstructed[0::2] = x_recon_even
     x_reconstructed[1::2] = x_recon_odd
 
-    return x_reconstructed
+    return x_reconstructed / (GAIN / 2)
 
 def analysis_filter(H0, H1, X_n, section=1):
     M = 2  # Number of phases
