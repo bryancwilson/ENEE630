@@ -13,22 +13,64 @@ X_n_h, bin_rep_h = generate_input(2, 1024)
 # plot_signal(X_n_h,
 #             stochastic=False,
 #             title="Input Signal (Band Pass)")
-X_n = X_n_ap
-# _, X_n = generate_test_input()
-X_n = X_n_ap
+
+_, X_n = generate_test_input()
+X_n = X_n_h
+
 # Analyze the Filters
 # filter_bank_plots(H0, H1)
 # ----------------------------------- Apply Polyphase Filter Bank -----------------------------------
 N = 1000
 sum = 0
+delay = 30
 for _ in range(N):
     x_hat = filter_bank(X_n)
+    # x_hat = test_at_various_levels(X_n, 1)
 
-    # Plot x_hat
-    # plt.plot(np.linspace(0, len(x_hat) - 1, len(x_hat)), x_hat.real)
-    # plt.show()
-    # MSE Calculation
-    mse_value = mse(X_n, x_hat)
+    # --- Alignment and MSE Calculation ---
+    delay = 30 
+    x_n_rec_corrected = x_hat[delay - 1:] 
+    X_n_corrected = X_n[:len(X_n) - delay + 1]
+
+    min_len = min(len(X_n_corrected), len(x_n_rec_corrected))
+    X_n_corrected = X_n_corrected[:min_len]
+    x_n_rec_corrected = x_n_rec_corrected[:min_len]
+
+    mse_value = mse(X_n_corrected, x_n_rec_corrected)
+
+    # --- Plotting ---
+    error = X_n_corrected - x_n_rec_corrected
+
+    # --- Plot 1: Original Signal (Top) ---
+    plt.subplot(2, 1, 1) # 2 rows, 1 column, index 1
+    plt.plot(X_n_corrected.real, label='Original Signal (Real)', color='blue', alpha=0.7)
+    plt.plot(x_n_rec_corrected.real, label='Reconstructed Signal (Real)', color='orange', alpha=0.7)   
+    plt.title('Original Signal')
+    plt.ylabel('Amplitude')
+    plt.grid(True)
+    plt.legend()
+
+    # --- Plot 2: Reconstructed Signal (Bottom) ---
+    plt.subplot(2, 1, 2) # 2 rows, 1 column, index 2 (The bottom slot)
+    plt.plot(x_n_rec_corrected.real, label='Reconstructed Signal (Real)', color='orange', alpha=0.7)
+    plt.title('Reconstructed Signal')
+    plt.xlabel('Sample Index')
+    plt.ylabel('Amplitude')
+    plt.grid(True)
+    plt.legend()
+
+    plt.tight_layout() # Adjusts spacing so titles don't overlap
+    plt.show()
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(np.abs(error), label='Magnitude of Reconstruction Error (|X_n - x_hat|)', color='red', linewidth=1)
+    plt.title(f'Reconstruction Error Magnitude (MSE = {mse_value:.2e})')
+    plt.xlabel('Sample Index (n)')
+    plt.ylabel('Error Magnitude')
+    plt.legend()
+    plt.grid(True, alpha=0.5)
+    plt.yscale('log')
+    plt.show()
 
     # Rolling Sum
     sum += mse_value

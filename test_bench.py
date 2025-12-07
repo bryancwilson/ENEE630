@@ -47,57 +47,6 @@ def test_at_various_levels(X_n, test):
 
     return x_n_rec
 
-# --- TEST BENCH FOR POLYPHASE FILTER BANK DECOMPOSITION AND RECONSTRUCTION ---
-# Input Signal
-input_sig = generate_test_input()[1]  # Get the chirp signal
-
-# Analysis Filter Bank Decomposition
-Y_n_level_1_top, Y_n_level_1_bot = analysis_filter_block(H0, H1, input_sig)
-Y_n_level_2_top, Y_n_level_2_bot = analysis_filter_block(H0, H1, Y_n_level_1_top)
-Y_n_level_3_top, Y_n_level_3_bot = analysis_filter_block(H0, H1, Y_n_level_2_top)
-   
-# Flatten the lists (since your code appended list of arrays/floats)
-v3 = np.array(Y_n_level_1_bot).flatten()
-v2 = np.array(Y_n_level_2_bot).flatten()
-v1 = np.array(Y_n_level_3_bot).flatten()
-v0 = np.array(Y_n_level_3_top).flatten()
-
-# Synthesis Filter Bank Reconstruction
-x_n_rec_top = synthesis_filter(F0_1, F1_1, v0, v1)
-x_n_rec_mid = synthesis_filter(F0_1, F1_1, x_n_rec_top, v2)
-x_n_rec = synthesis_filter(F0_1, F1_1, x_n_rec_mid, v3)
-
-# --- Plotting ---
-plt.figure(figsize=(12, 8))
-
-plt.subplot(5, 1, 1)
-plt.plot(v3)
-plt.title(f"v3 (Level 1 High Pass) - Length {len(v3)}")
-plt.grid(True)
-
-plt.subplot(5, 1, 2)
-plt.plot(v2)
-plt.title(f"v2 (Level 2 High Pass) - Length {len(v2)}")
-plt.grid(True)
-
-plt.subplot(5, 1, 3)
-plt.plot(v1)
-plt.title(f"v1 (Level 3 High Pass) - Length {len(v1)}")
-plt.grid(True)
-
-plt.subplot(5, 1, 4)
-plt.plot(v0)
-plt.title(f"v0 (Level 3 Low Pass) - Length {len(v0)}")
-plt.grid(True)
-
-plt.subplot(5, 1, 5)
-plt.plot(input_sig)
-plt.title(f"v0 (Level 3 Low Pass) - Length {len(input_sig)}")
-plt.grid(True)
-
-plt.tight_layout()
-plt.show()
-
 # --- 3. THE TEST FUNCTION ---
 def run_test(input_sig, title):
     # Analysis
@@ -167,8 +116,3 @@ def run_test(input_sig, title):
 
     plt.show()
 
-
-# --- 4. EXECUTE ---
-print("Running Chirp Test (Check for Aliasing)...")
-run_test(input_sig, "Linear Chirp Test")
-print("Running Impulse Test (Check for Reconstruction)...")

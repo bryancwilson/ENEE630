@@ -58,6 +58,16 @@ def plot_signal(X_n, stochastic=True, title="Signal Plot"):
     plt.tight_layout()
     plt.show()
 
+def plot_T(H0, H1, F0, F1):
+    # Parameters
+    N = 4096
+
+    # Frequency Transforms
+    ft_H0 = np.fft.fft(H0, N)
+    ft_H1 = np.fft.fft(H1, N)
+    ft_F0 = np.fft.fft(F0, N)
+    ft_F1 = np.fft.fft(F1, N)
+
 def plot_spec(ax, x, title):
     # Compute Spectrogram
     f, t_spec, Sxx = signal.spectrogram(x, 40000, nperseg=128, noverlap=120)

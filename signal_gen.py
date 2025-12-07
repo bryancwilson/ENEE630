@@ -12,7 +12,7 @@ def generate_input(type: int, vector_size: int):
         # Generate I and Q Component Separately
         x_i = np.random.randint(lower_bound, upper_bound, size=vector_size, dtype=np.int32)
         x_q = np.random.randint(lower_bound, upper_bound, size=vector_size, dtype=np.int32)
-        x_q = np.zeros(vector_size)  # Q Channel is Zero
+        # x_q = np.zeros(vector_size)  # Q Channel is Zero
 
         # Combine To Form Complex Signal
         X_n = x_i + 1j * x_q
