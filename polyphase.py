@@ -20,11 +20,46 @@ alternating_signs[1::2] = -1  # Set indices 1, 3, 5... to -1
 
 # First Set of Synthesis Filters
 F0_1 = np.array(H0)
-F1_1 = np.array(H1)
+F1_1 = -1*np.array(H1)
 
 # Second Set of Synthesis Filters
 F0_2 = np.array(H0)
 F1_2 = np.array(H1)
+
+def filter_bank_2(X_n):
+    # ----- Analysis Filter Bank -----
+    Y_n_level_1_top, Y_n_level_1_bot = analysis_filter_block(H0, H1, X_n)
+    Y_n_level_2_top, Y_n_level_2_bot = analysis_filter_block(H0, H1, Y_n_level_1_top)
+    Y_n_level_3_top, Y_n_level_3_bot = analysis_filter_block(H0, H1, Y_n_level_2_top)
+
+    # Flatten to ensure 1D arrays
+    v3 = np.array(Y_n_level_1_bot).flatten()
+    v2 = np.array(Y_n_level_2_bot).flatten()
+    v1 = np.array(Y_n_level_3_bot).flatten()
+    v0 = np.array(Y_n_level_3_top).flatten()
+
+    # ----- Synthesis Filter Bank -----
+    
+    # 1. First Reconstruction (Lowest level)
+    # v0 and v1 are the same length by definition of the analysis block
+    x_n_rec_top = synthesis_filter(F0_1, F1_1, v0, v1)
+    
+    # --- CRITICAL FIX 1: Match Length with v2 ---
+    # If the reconstruction is longer than v2 (due to padding in analysis), trim it.
+    if len(x_n_rec_top) > len(v2):
+        x_n_rec_top = x_n_rec_top[:len(v2)]
+    
+    # 2. Second Reconstruction
+    x_n_rec_mid = synthesis_filter(F0_1, F1_1, x_n_rec_top, v2)
+    
+    # --- CRITICAL FIX 2: Match Length with v3 ---
+    if len(x_n_rec_mid) > len(v3):
+        x_n_rec_mid = x_n_rec_mid[:len(v3)]
+
+    # 3. Final Reconstruction
+    x_n_rec = synthesis_filter(F0_1, F1_1, x_n_rec_mid, v3)
+
+    return x_n_rec
 
 def filter_bank(X_n):
     # ----- Analysis Filter Bank -----
@@ -81,16 +116,16 @@ def analysis_filter_block(H0, H1, X_n):
     y_top_odd  = signal.lfilter(E1_H0, 1, x_odd)
     Y_n_top = y_top_even + y_top_odd
 
-    return Y_n_top / (GAIN), Y_n_bot / (GAIN)
+    return Y_n_top, Y_n_bot
 
 def synthesis_filter(F0, F1, Y_n_top, Y_n_bot):
     L = 2  # Number of phases
 
     # Create polyphase components
-    R0_H0 = np.array([F0[i] for i in range(1, len(F0), L)])
-    R1_H0 = np.array([F0[i] for i in range(0, len(F0), L)])
-    R0_H1 = np.array([F1[i] for i in range(1, len(F1), L)])
-    R1_H1 = np.array([F1[i] for i in range(0, len(F1), L)])
+    R0_H0 = np.array([F0[i] for i in range(0, len(F0), L)])
+    R1_H0 = np.array([F0[i] for i in range(1, len(F0), L)])
+    R0_H1 = np.array([F1[i] for i in range(0, len(F1), L)])
+    R1_H1 = np.array([F1[i] for i in range(1, len(F1), L)])
 
     # (This is the filtering step and adding step)
     # Low Pass Branch
@@ -110,7 +145,7 @@ def synthesis_filter(F0, F1, Y_n_top, Y_n_bot):
     x_reconstructed[0::2] = x_recon_even
     x_reconstructed[1::2] = x_recon_odd
 
-    return x_reconstructed / (GAIN / 2)
+    return x_reconstructed * 2
 
 def analysis_filter(H0, H1, X_n, section=1):
     M = 2  # Number of phases

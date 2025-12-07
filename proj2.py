@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from signal_gen import generate_input, generate_test_input, mse
-from polyphase import filter_bank, H0, H1, F0_1, F1_1, F0_2, F1_2
+from polyphase import filter_bank, filter_bank_2, H0, H1, F0_1, F1_1, F0_2, F1_2
 from plot_sp import filter_bank_plots, plot_signal, plot_spec, plot_T
 from scramble import generate_pn_sequence
 from test_bench import test_at_various_levels
@@ -19,14 +19,15 @@ X_n = X_n_h
 
 # Analyze the Filters
 # filter_bank_plots(H0, H1)
-plot_T(H0, H1, F0_1, F1_1)
+# plot_T(H0, H1, F0_1, F1_1)
+
 # ----------------------------------- Apply Polyphase Filter Bank -----------------------------------
 N = 1000
 sum = 0
 delay = 30
 for _ in range(N):
-    x_hat = filter_bank(X_n)
-    # x_hat = test_at_various_levels(X_n, 1)
+    # x_hat = filter_bank_2(X_n)
+    x_hat = test_at_various_levels(X_n, 1)
 
     # --- Alignment and MSE Calculation ---
     delay = 30 
