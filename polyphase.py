@@ -10,13 +10,44 @@ GAIN = 2050
 H0 = np.array([-1, 0, 3, 0, -8, 0, 21, 0, -45, 0, 91, 0, -191, 0, 643, 1024, 643, 0, -191, 0, 91, 0, -45, 0, 21, 0, -8, 0, 3, 0, -1])
 H1 = np.array([-1, 0, 3, 0, -8, 0, 21, 0, -45, 0, 91, 0, -191, 0, 643, -1024, 643, 0, -191, 0, 91, 0, -45, 0, 21, 0, -8, 0, 3, 0, -1])
 
+num_taps = 30
+#H0 = signal.firwin(num_taps, cutoff=0.5, window='hamming')
+alternating_signs = np.ones(num_taps)
+alternating_signs[1::2] = -1  # Set indices 1, 3, 5... to -1
+#H1 = H0 * alternating_signs
+
 # First Set of Synthesis Filters
 F0_1 = np.array(H0)
-F1_1 = -1*np.array(H1)
+F1_1 = np.array(H1)
 
 # Second Set of Synthesis Filters
 F0_2 = np.array(H0)
 F1_2 = np.array(H1)
+
+def filter_bank(X_n):
+    # ----- Analysis Filter Bank -----
+    # First Level of Decomposition
+    Y_n_level_1_top, Y_n_level_1_bot = analysis_filter_block(H0, H1, X_n)
+    # Second Level of Decomposition
+    Y_n_level_2_top, Y_n_level_2_bot = analysis_filter_block(H0, H1, Y_n_level_1_top)
+    # Third Level of Decomposition
+    Y_n_level_3_top, Y_n_level_3_bot = analysis_filter_block(H0, H1, Y_n_level_2_top)
+
+    # Rename According to Report Notation
+    v3 = np.array(Y_n_level_1_bot).flatten()
+    v2 = np.array(Y_n_level_2_bot).flatten()
+    v1 = np.array(Y_n_level_3_bot).flatten()
+    v0 = np.array(Y_n_level_3_top).flatten()
+
+    # ----- Synthesis Filter Bank -----
+    # First Stage of Reconstruction
+    x_n_rec_top = synthesis_filter(F0_1, F1_1, v0, v1)
+    # Second Stage of Reconstruction
+    x_n_rec_mid = synthesis_filter(F0_1, F1_1, x_n_rec_top, v2)
+    # Final Stage of Reconstruction
+    x_n_rec = synthesis_filter(F0_1, F1_1, x_n_rec_mid, v3)
+
+    return x_n_rec
 
 def analysis_filter_block(H0, H1, X_n):
     M = 2  # Number of phases

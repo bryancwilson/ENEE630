@@ -43,7 +43,7 @@ def test_at_various_levels(X_n, test):
         fig.colorbar(pcm1, cax=cbar_ax, label='Power (dB)')
         plt.show()
 
-        x_n_rec = synthesis_filter(F0_1, F1_1, top_1_rec, bot_1_rec)
+        x_n_rec = synthesis_filter(F0_1, F1_1, top_1_rec, bot1)
 
     return x_n_rec
 

@@ -3,7 +3,13 @@ import matplotlib.pyplot as plt
 from signal_gen import generate_input
  
 def generate_pn_sequences():
-    
+
+    real_pns = []
+    imag_pns = []
+    for i in range(len(3)):
+        real_pn = generate_pn_sequence(pn_type=1, vector_size=1024)
+        real_pns()
+
 def generate_pn_sequence(pn_type: int, vector_size: int):
     
     # Initial State of the Register (Key)
