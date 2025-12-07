@@ -68,6 +68,20 @@ def plot_T(H0, H1, F0, F1):
     ft_F0 = np.fft.fft(F0, N)
     ft_F1 = np.fft.fft(F1, N)
 
+    # T(z) = 1/2[H0F0 + H1F1]
+    ft_T = 0.5*[ft_H0*ft_H0 + ft_H1*ft_F1]
+
+    # Magnitude
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+    label = "T(z)"
+    ft_T_abs = (ft_T + 1e-12) / np.max(ft_T)
+    ft_T_phase = np.angle(ft_T)
+    k = np.arange(N)
+    ax1.plot(k, 10*np.log10(ft_T_abs), label=label)
+
+    # Phase
+    ax2.plot(k, ft_T_phase, label=label)
+
 def plot_spec(ax, x, title):
     # Compute Spectrogram
     f, t_spec, Sxx = signal.spectrogram(x, 40000, nperseg=128, noverlap=120)
@@ -78,6 +92,7 @@ def plot_spec(ax, x, title):
     ax.set_xlabel('Time (s)')
     ax.set_title(title)
     return pcm
+
     
 def plot_filter(H0, H1, filter_toggle, ax1, ax2, label):
 

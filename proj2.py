@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 from signal_gen import generate_input, generate_test_input, mse
 from polyphase import filter_bank, H0, H1, F0_1, F1_1, F0_2, F1_2
-from plot_sp import filter_bank_plots, plot_signal, plot_spec
+from plot_sp import filter_bank_plots, plot_signal, plot_spec, plot_T
 from scramble import generate_pn_sequence
 from test_bench import test_at_various_levels
 
@@ -19,6 +19,7 @@ X_n = X_n_h
 
 # Analyze the Filters
 # filter_bank_plots(H0, H1)
+plot_T(H0, H1, F0_1, F1_1)
 # ----------------------------------- Apply Polyphase Filter Bank -----------------------------------
 N = 1000
 sum = 0

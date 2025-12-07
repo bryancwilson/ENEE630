@@ -64,9 +64,6 @@ def rolling_volatility(returns, window_size):
 
     return volatilities
 
-def kalman_filter():
-    pass
-
 dat = yf.Ticker("MSFT")
 
 # download closing prices for MSFT over the last 3 years
@@ -114,28 +111,108 @@ R = np.array([[.01]])   # measurement noise
 P0 = np.eye(n_P) * 1.0
 x0 = np.array(data.values[10])   # initial pos=0, vel=1
 
-kf = KalmanFilter(A, B, H, Q, R, P0, x0)
-
 # simulate
-i = 0
-preds = []
-while i < len(volatilities):
-    kf.predict([volatilities[i]])  # predict step
-    y = data.values[i + ws - 1] + np.random.normal(0, R)  # measurement
-    x_est, K = kf.update(y)
-    preds.append(x_est[0])
-    print("Estimate:", x_est, "Actual: ", data.values[i+ws], "Kalman Gain:", K)
-    i=i+1
+def run_kalman_filter(data, volatilities, ws, R, Q):
+    kf = KalmanFilter(A, B, H, Q, R, P0, x0)
 
-# plot results
-plt.plot(data.index[ws:], data.values[ws:], label="Actual Price")
-plt.plot(data.index[ws:], preds, label="Kalman Filter Estimate")
-plt.title("Kalman Filter Stock Price Estimation - MSFT")
-plt.xlabel("Date")
-plt.ylabel("Price (USD)")
-plt.legend()
-plt.grid()
-plt.show()
+    i = 0
+    preds = []
+    error = 0
+    while i < len(volatilities):
+        kf.predict([volatilities[i]])  # predict step
+        y = data.values[i + ws - 1] + np.random.normal(0, R)  # measurement
+        x_est, K = kf.update(y)
+        preds.append(x_est[0])
+        # print("Estimate:", x_est, "Actual: ", data.values[i+ws], "Kalman Gain:", K)
+        error += np.pow(x_est - data.values[i+ws], 2)
 
+        i=i+1
 
+    mse = error / len(volatilities)
+    return preds, mse
 
+# def tune R
+def R_sweep():
+    mse_s = []
+    N = 500
+    max_r = 0.2
+    for r_ in np.linspace(0, max_r, N):
+        r = np.array([[r_]]) 
+        preds, mse = run_kalman_filter(data, volatilities, ws, r, Q)
+        mse_s.append(mse)
+
+        # plot worst and best case
+        if r_ == 0:
+            best_preds = preds
+            # plot results
+            plt.plot(data.index[ws:], data.values[ws:], label="Actual Price")
+            plt.plot(data.index[ws:], best_preds, label="Kalman Filter Estimate")
+            plt.title("Kalman Filter Stock Price Estimation (R = {:.4f}) - MSFT".format(0))
+            plt.xlabel("Date")
+            plt.ylabel("Price (USD)")
+            plt.legend()
+            plt.grid()
+            plt.show()
+        if r_ == max_r:
+            worst_preds = preds
+            # plot results
+            plt.plot(data.index[ws:], data.values[ws:], label="Actual Price")
+            plt.plot(data.index[ws:], worst_preds, label="Kalman Filter Estimate")
+            plt.title("Kalman Filter Stock Price Estimation (R = {:.4f}) - MSFT".format(max_r))
+            plt.xlabel("Date")
+            plt.ylabel("Price (USD)")
+            plt.legend()
+            plt.grid()
+            plt.show()
+
+    # plot mse
+    plt.plot(np.linspace(0.0001, max_r, N), np.reshape(mse_s, (1, N))[0])
+    plt.title("MSE vs Measurement Noise Variance (R)")
+    plt.xlabel("Measurement Noise Variance (R)")
+    plt.ylabel("Mean Squared Error (MSE)")
+    plt.grid()
+    plt.show()
+
+# Q sweep
+def Q_sweep():
+    mse_s = []
+    N = 500
+    max_q = 0.001
+    for q_ in np.linspace(0, max_q, N):
+        q = np.array([[q_]]) 
+        preds, mse = run_kalman_filter(data, volatilities, ws, R, q)
+        mse_s.append(mse)
+
+        # plot worst and best case
+        if q_ == 0:
+            best_preds = preds
+            # plot results
+            plt.plot(data.index[ws:], data.values[ws:], label="Actual Price")
+            plt.plot(data.index[ws:], best_preds, label="Kalman Filter Estimate")
+            plt.title("Kalman Filter Stock Price Estimation (Q = {:.4f}) - MSFT".format(0))
+            plt.xlabel("Date")
+            plt.ylabel("Price (USD)")
+            plt.legend()
+            plt.grid()
+            plt.show()
+        if q_ == max_q:
+            worst_preds = preds
+            # plot results
+            plt.plot(data.index[ws:], data.values[ws:], label="Actual Price")
+            plt.plot(data.index[ws:], worst_preds, label="Kalman Filter Estimate")
+            plt.title("Kalman Filter Stock Price Estimation (Q = {:.4f}) - MSFT".format(max_q))
+            plt.xlabel("Date")
+            plt.ylabel("Price (USD)")
+            plt.legend()
+            plt.grid()
+            plt.show()
+
+    # plot mse
+    plt.plot(np.linspace(0.0001, max_q, N), np.reshape(mse_s, (1, N))[0])
+    plt.title("MSE vs Measurement Noise Variance (R)")
+    plt.xlabel("Measurement Noise Variance (R)")
+    plt.ylabel("Mean Squared Error (MSE)")
+    plt.grid()
+    plt.show()
+
+Q_sweep()

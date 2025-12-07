@@ -20,7 +20,7 @@ alternating_signs[1::2] = -1  # Set indices 1, 3, 5... to -1
 
 # First Set of Synthesis Filters
 F0_1 = np.array(H0)
-F1_1 = -1*np.array(H1)
+F1_1 = np.array(H1)
 
 # Second Set of Synthesis Filters
 F0_2 = np.array(H0)
@@ -81,7 +81,7 @@ def analysis_filter_block(H0, H1, X_n):
     y_top_odd  = signal.lfilter(E1_H0, 1, x_odd)
     Y_n_top = y_top_even + y_top_odd
 
-    return Y_n_top, Y_n_bot
+    return Y_n_top / (GAIN), Y_n_bot / (GAIN)
 
 def synthesis_filter(F0, F1, Y_n_top, Y_n_bot):
     L = 2  # Number of phases
@@ -105,12 +105,12 @@ def synthesis_filter(F0, F1, Y_n_top, Y_n_bot):
     x_recon_odd = x_recon_bot_H0 + x_recon_bot_H1
 
     # Delay and Combine Branches
-    x_reconstructed = np.zeros(2 * len(Y_n_top), dtype=complex) # Use complex if inputs are complex
+    x_reconstructed = np.zeros(2 * len(Y_n_top)) # Use complex if inputs are complex
     
     x_reconstructed[0::2] = x_recon_even
     x_reconstructed[1::2] = x_recon_odd
 
-    return x_reconstructed * L
+    return x_reconstructed / (GAIN / 2)
 
 def analysis_filter(H0, H1, X_n, section=1):
     M = 2  # Number of phases
