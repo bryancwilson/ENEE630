@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from signal_gen import generate_input, rmse
 from plot_sp import filter_bank_plots
 from scipy import signal
+from scramble import GROUP, run_scrambler_system, run_descrambler_system, scramble_masker
 
 # High-Pass and Low-Pass Filter Coefficients
 GAIN = 2050
@@ -45,12 +46,11 @@ def add_noise(signal, snr_db):
 
     return noisy_signal
 
-def calculate_MSE(input_option, snr, H0=H0, H1=H1, F0_1=F0_1, F1_1=F1_1):
+def calculate_MSE(input_option, add_noise=False, snr=0, scrambling=False, H0=H0, H1=H1, F0_1=F0_1, F1_1=F1_1, N=1000):
     fb = TwoChannelFilterBank(num_taps=32)
 
     sum = 0
-    N = 100
-    for _ in range(100):
+    for frame in range(N):
         # Generate the input signal
         if input_option == 1:
             X_n_ap, bin_rep_h = generate_input(1, 1024)
@@ -60,7 +60,7 @@ def calculate_MSE(input_option, snr, H0=H0, H1=H1, F0_1=F0_1, F1_1=F1_1):
             original_signal = X_n_h
 
         # 2. Add Noise
-        if snr >= 0:
+        if add_noise:
             original_signal = add_noise(original_signal, snr)
 
         # 3. Perform Analysis
@@ -73,12 +73,21 @@ def calculate_MSE(input_option, snr, H0=H0, H1=H1, F0_1=F0_1, F1_1=F1_1):
         v0, v1 = fb.analysis(llow)  # Third level analysis on hh band
         v0_me, v1_me = analysis_filter_block(H0, H1, llow)
 
+        if scrambling:
+            tx_inputs = [v0_me, v1_me, v2_me, v3_me]
+
+            tx_scrambled = run_scrambler_system(tx_inputs, frame, GROUP)
+            v0_me_s, v1_me_s, v2_me_s, v3_me_s = tx_scrambled
+
+            tx_unscrambled = run_descrambler_system(tx_scrambled, frame, GROUP)
+            v0_me, v1_me, v2_me, v3_me = tx_unscrambled
+            
         # Add noise to v's
-        # if snr > 0:
-        #     v3_me = add_noise(v3_me, snr)
-        #     v2_me = add_noise(v2_me, snr)
-        #     v1_me = add_noise(v1_me, snr)
-        #     v0_me = add_noise(v0_me, snr)
+        if add_noise:
+            v3_me = add_noise(v3_me, snr)
+            v2_me = add_noise(v2_me, snr)
+            v1_me = add_noise(v1_me, snr)
+            v0_me = add_noise(v0_me, snr)
 
         # 4. Perform Synthesis
         reconstructed_signal = fb.synthesis(v0, v1)
