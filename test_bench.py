@@ -1,6 +1,6 @@
-from polyphase import H0, H1, analysis_filter, analysis_filter_block, synthesis_filter, F0_1, F1_1, F1_2, F0_2, GAIN
+from polyphase import TwoChannelFilterBank, H0, H1, analysis_filter, analysis_filter_block, synthesis_filter, F0_1, F1_1, F1_2, F0_2, GAIN
 from plot_sp import plot_magnitude_response, plot_spec
-from signal_gen import generate_input, generate_test_input, mse
+from signal_gen import generate_input, generate_test_input, rmse
 from scipy import signal
 
 import numpy as np
@@ -116,72 +116,6 @@ def run_test(input_sig, title):
 
     plt.show()
 
-import numpy as np
-import scipy.signal as signal
-import matplotlib.pyplot as plt
-
-class TwoChannelFilterBank:
-    def __init__(self, num_taps=32):
-        """
-        Initialize the filter bank with a prototype Low Pass Filter.
-        Using a standard QMF design approach.
-        """
-        # 1. Design Prototype Low Pass Filter (H0)
-        # We use an EVEN length (ODD order) filter to satisfy QMF constraints
-        self.h0 = H0
-
-        # 2. Design High Pass Filter (H1)
-        # H1[n] = (-1)^n * H0[n] (Mirror filter)
-        # This shifts the frequency response by pi
-        self.h1 = H1
-        
-
-        # 3. Design Synthesis Filters (F0, F1)
-        # For alias cancellation in QMF:
-        # F0 is typically 2 * H0 (to compensate for downsampling energy loss)
-        # F1 is typically -2 * H1
-        self.f0 = 2 * self.h0
-        self.f1 = -2 * self.h1
-
-    def analysis(self, x):
-        """
-        Decomposes signal into Low and High subbands.
-        Steps: Filter -> Downsample
-        """
-        # Low Band: Filter with H0
-        low_filtered = signal.lfilter(self.h0, 1.0, x)
-        # Downsample by 2 (keep even indices)
-        y_low = low_filtered[0::2]
-
-        # High Band: Filter with H1
-        high_filtered = signal.lfilter(self.h1, 1.0, x)
-        # Downsample by 2
-        y_high = high_filtered[0::2]
-
-        return y_low, y_high
-
-    def synthesis(self, y_low, y_high):
-        """
-        Reconstructs signal from subbands.
-        Steps: Upsample -> Filter -> Add
-        """
-        # 1. Upsample (Insert Zeros)
-        # Create arrays of double length
-        up_low = np.zeros(2 * len(y_low))
-        up_high = np.zeros(2 * len(y_high))
-        
-        # Place values in even indices (0, 2, 4...)
-        up_low[0::2] = y_low
-        up_high[0::2] = y_high
-
-        # 2. Filter with Synthesis Filters
-        recon_low = signal.lfilter(self.f0, 1.0, up_low)
-        recon_high = signal.lfilter(self.f1, 1.0, up_high)
-
-        # 3. Combine
-        x_recon = recon_low + recon_high
-        
-        return x_recon
 
 # --- Main Execution ---
 
@@ -190,46 +124,74 @@ fs = 1024
 t = np.linspace(0, 1, fs)
 # A mix of low freq (10Hz) and high freq (300Hz)
 
-# Generate the input signal
-X_n_ap, bin_rep_h = generate_input(1, 1024)
-X_n_h, bin_rep_h = generate_input(2, 1024)
-original_signal = X_n_h
+
 
 # 2. Initialize Filter Bank
 fb = TwoChannelFilterBank(num_taps=32)
 
-# 3. Perform Analysis
-low_band, high_band = fb.analysis(original_signal)
+sum = 0
+for _ in range(1000):
+    # Generate the input signal
+    X_n_ap, bin_rep_h = generate_input(1, 1024)
+    X_n_h, bin_rep_h = generate_input(2, 1024)
+    original_signal = X_n_h
 
-# 4. Perform Synthesis
-reconstructed_signal = fb.synthesis(low_band, high_band)
+    # 3. Perform Analysis
+    low, v3 = fb.analysis(original_signal)
+    low_me, v3_me = analysis_filter_block(H0, H1, original_signal)
+    
+    llow, v2 = fb.analysis(low)  # Second level analysis on high band
+    llow_me, v2_me = analysis_filter_block(H0, H1, low)  # Second level analysis on high band
 
-# 5. Compensate for Filter Delay (Group Delay)
-# For FIR filters of length N, the total delay of Analysis + Synthesis is approx N-1 samples
-delay = 32 - 1
-reconstructed_shifted = np.roll(reconstructed_signal, -delay)
-# Zero out the wrap-around from np.roll
-reconstructed_shifted[-delay:] = 0
+    v0, v1 = fb.analysis(llow)  # Third level analysis on hh band
+    v0_me, v1_me = analysis_filter_block(H0, H1, llow)
 
+    # 4. Perform Synthesis
+    reconstructed_signal = fb.synthesis(v0, v1)
+    reconstructed_signal_me = synthesis_filter(F0_2, F1_2, v0_me, v1_me)
+
+    reconstructed_signal = fb.synthesis(reconstructed_signal, v2)
+    reconstructed_signal_me = synthesis_filter(F0_2, F1_2, reconstructed_signal_me, v2_me)
+
+    reconstructed_signal = fb.synthesis(reconstructed_signal, v3)
+    reconstructed_signal_me = synthesis_filter(F0_2, F1_2, reconstructed_signal_me, v3_me)
+
+    # 5. Compensate for Filter Delay (Group Delay)
+    # For FIR filters of length N, the total delay of Analysis + Synthesis is approx N-1 samples
+    delay = 210 + 3
+    reconstructed_shifted = reconstructed_signal_me
+
+    # normalized signals for better visualization
+    norm_orig = original_signal[:len(reconstructed_shifted[delay:])]
+    norm_recon =  reconstructed_shifted[delay:] 
+
+    # calculate RMSE
+    sum += rmse(norm_orig, norm_recon)
+
+rmse_value = sum / 1000
+print(f"Average RMSE over 1000 runs: {rmse_value:.6f}")
 # --- Plotting ---
 plt.figure(figsize=(12, 10))
 
 # Plot 1: Original vs Reconstructed
 plt.subplot(3, 1, 1)
 plt.title("Original vs Reconstructed Signal")
-plt.plot(t, original_signal, 'b', label='Original', alpha=0.6, linewidth=2)
+plt.plot(np.linspace(0, len(reconstructed_shifted[delay:]) - 1, len(reconstructed_shifted[delay:])), norm_orig, 'b', label='Original', alpha=0.6, linewidth=2)
 # We trim the plot to ignore the edge artifacts
-plt.plot(t[:-delay], reconstructed_shifted[:-delay], 'r--', label='Reconstructed (Delay Corrected)')
+plt.plot(np.linspace(0, len(reconstructed_shifted[delay:]) - 1, len(reconstructed_shifted[delay:])), norm_recon, 'r--', label='Reconstructed (Delay Corrected)')
 plt.legend()
 plt.grid(True)
+plt.show()
 
-# Plot 2: Subbands
+  
+# Plot 2: Reconstruction Error
 plt.subplot(3, 1, 2)
-plt.title("Subbands (Downsampled)")
-plt.plot(low_band, 'g', label='Low Band (y0)', alpha=0.8)
-plt.plot(high_band, 'm', label='High Band (y1)', alpha=0.8)
+error_signal = original_signal[:len(reconstructed_shifted[delay:])] - reconstructed_shifted[delay:]
+plt.title("Reconstruction Error Signal")
+plt.plot(np.linspace(0, len(error_signal) - 1, len(error_signal)), error_signal, 'k', label='Error', alpha=0.8)
 plt.legend()
 plt.grid(True)
+plt.show()
 
 # Plot 3: Filter Frequency Response
 plt.subplot(3, 1, 3)

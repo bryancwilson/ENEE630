@@ -61,8 +61,35 @@ def generate_test_input():
 
     return impulse, chirp_sig
 
-def mse(X_n, Xk_n):
-    error = X_n - Xk_n
-    mse_value = np.mean(np.abs(error)**2)
-    return mse_value
+def rmse(x_ref, x_recon):
+    """
+    Calculates the custom error metric defined in the image.
+    Formula: sqrt( sum( |x - x_hat|^2 / |x|^2 ) ) / 1024
+    """
+    # Ensure inputs are numpy arrays
+    x = np.array(x_ref)
+    hat_x = np.array(x_recon)
+    
+    # Safety Check: The formula hardcodes 1024, but your signal might vary.
+    # We will use 1024 to strictly follow the image, or len(x) if you prefer genericism.
+    N = 1024 
+    
+    # 1. Numerator: Squared magnitude of the difference (Error Power)
+    # Using np.abs() handles complex numbers correctly
+    diff_sq = np.abs(x - hat_x)**2
+    
+    # 2. Denominator: Squared magnitude of the reference (Signal Power)
+    ref_sq = np.abs(x)**2
+    
+    # Avoid division by zero (add small epsilon where ref is 0)
+    ref_sq[ref_sq == 0] = 1e-10 
+    
+    # 3. Element-wise Division (Relative Error)
+    relative_error = diff_sq / ref_sq
+    
+    # 4. Sum, Sqrt, and Scale
+    sum_val = np.sum(relative_error)
+    result = np.sqrt(sum_val) / N
+    
+    return result
 

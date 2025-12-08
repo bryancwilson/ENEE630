@@ -8,12 +8,9 @@ def generate_pn_sequences():
     imag_pns = []
     for i in range(len(3)):
         real_pn = generate_pn_sequence(pn_type=1, vector_size=1024)
-        real_pns()
+        real_pns.append(1 - 2*real_pn)  # Map 0 -> 1 and 1 -> -1
 
-def generate_pn_sequence(pn_type: int, vector_size: int):
-    
-    # Initial State of the Register (Key)
-    state = 0x3FFFFFF
+def generate_pn_sequence(pn_type: int, vector_size: int, key: int = 0x3FFFFFF):
         
     # Initialize Output
     output = []

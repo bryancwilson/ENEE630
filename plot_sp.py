@@ -61,26 +61,60 @@ def plot_signal(X_n, stochastic=True, title="Signal Plot"):
 def plot_T(H0, H1, F0, F1):
     # Parameters
     N = 4096
-
-    # Frequency Transforms
+    
+    # Frequency Transforms (FFT)
     ft_H0 = np.fft.fft(H0, N)
     ft_H1 = np.fft.fft(H1, N)
     ft_F0 = np.fft.fft(F0, N)
     ft_F1 = np.fft.fft(F1, N)
-
-    # T(z) = 1/2[H0F0 + H1F1]
-    ft_T = 0.5*[ft_H0*ft_H0 + ft_H1*ft_F1]
-
-    # Magnitude
+    
+    # --- 1. Calculate Transfer Function T(z) ---
+    # Formula: T(z) = 0.5 * ( H0(z)F0(z) + H1(z)F1(z) )
+    # FIXED: Changed ft_H0*ft_H0 to ft_H0*ft_F0
+    ft_T = 0.5 * (ft_H0 * ft_F0 + ft_H1 * ft_F1)
+    
+    # --- 2. Magnitude Response ---
+    # We want the absolute magnitude for the log plot
+    mag_T = np.abs(ft_T)
+    
+    # Avoid log(0) errors
+    mag_T = mag_T + 1e-12
+    
+    # Normalize (Optional: usually T(z) should be exactly 1 for Perfect Reconstruction)
+    # mag_T_norm = mag_T / np.max(mag_T) 
+    
+    # Convert to dB. Use 20*log10 for voltage/amplitude magnitude.
+    # (Use 10*log10 if you are plotting power, but magnitude is standard here).
+    mag_db = 20 * np.log10(mag_T)
+    
+    # --- 3. Phase Response ---
+    phase_T = np.angle(ft_T)
+    
+    # --- 4. Plotting ---
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
-    label = "T(z)"
-    ft_T_abs = (ft_T + 1e-12) / np.max(ft_T)
-    ft_T_phase = np.angle(ft_T)
-    k = np.arange(N)
-    ax1.plot(k, 10*np.log10(ft_T_abs), label=label)
+    
+    # Frequency axis (0 to pi)
+    w = np.linspace(0, np.pi, N // 2)
+    
+    # Plot only the first half (0 to Nyquist) for clarity
+    ax1.plot(w, mag_db[:N//2])
+    ax1.set_title('Magnitude Response |T(z)| (dB)')
+    ax1.set_xlabel('Frequency (rad/sample)')
+    ax1.set_ylabel('Magnitude (dB)')
+    ax1.grid(True)
+    
+    # If Perfect Reconstruction, this should be Flat (0 dB)
 
-    # Phase
-    ax2.plot(k, ft_T_phase, label=label)
+    ax2.plot(w, np.unwrap(phase_T[:N//2]))
+    ax2.set_title('Phase Response <T(z)')
+    ax2.set_xlabel('Frequency (rad/sample)')
+    ax2.set_ylabel('Phase (radians)')
+    ax2.grid(True)
+    
+    # If Linear Phase, this should look like a straight line (sawtooth due to wrapping)
+    
+    plt.tight_layout()
+    plt.show()
 
 def plot_spec(ax, x, title):
     # Compute Spectrogram
