@@ -25,29 +25,49 @@ calculate_MSE(2, add_noise=False, snr=0, scrambling=False, H0=H0, H1=H1, F0_1=F0
 calculate_MSE(1, add_noise=False, snr=0, scrambling=False, H0=H0, H1=H1, F0_1=F0_2, F1_1=F1_2, N=1000)
 calculate_MSE(2, add_noise=False, snr=0, scrambling=False, H0=H0, H1=H1, F0_1=F0_2, F1_1=F1_2, N=1000)
 
-mse_option1_input1 = []
-mse_option1_input2 = []
-mse_option2_input1 = []
-mse_option2_input2 = []
-for snr in range(21):
-    mse_option1_input1.append(calculate_MSE(1, add_noise=True, snr=snr, scrambling=False, H0=H0, H1=H1, F0_1=F0_1, F1_1=F1_1, N=100))
-    mse_option1_input2.append(calculate_MSE(2, add_noise=True, snr=snr, scrambling=False, H0=H0, H1=H1, F0_1=F0_1, F1_1=F1_1, N=100))
-    mse_option2_input1.append(calculate_MSE(1, add_noise=True, snr=snr, scrambling=False, H0=H0, H1=H1, F0_1=F0_2, F1_1=F1_2, N=100))
-    mse_option2_input2.append(calculate_MSE(2, add_noise=True, snr=snr, scrambling=False, H0=H0, H1=H1, F0_1=F0_2, F1_1=F1_2, N=100))
 
-# plot MSE vs SNR
-plt.figure(figsize=(10, 6))
-plt.semilogy(range(21), mse_option1_input1, 'o-', label='Input Type 1, Filter Set 1')
-plt.semilogy(range(21), mse_option1_input2, 's-', label='Input Type 2, Filter Set 1')
-plt.semilogy(range(21), mse_option2_input1, 'o--', label='Input Type 1, Filter Set 2')
-plt.semilogy(range(21), mse_option2_input2, 's--', label='Input Type 2, Filter Set 2')
-plt.title('MSE vs SNR for Different Input Types and Filter Sets')
-plt.xlabel('SNR (dB)')
-plt.ylabel('Mean Squared Error (MSE)')
-plt.grid(True, which='both', linestyle='--', linewidth=0.5)
-plt.legend()
+f_offsets = [0, -2*78.125, 2*78.125, 25] 
+snrs = range(21)
+
+# Initialize storage for results
+# Each list contains 4 sub-lists (one for each offset)
+mses_f1 = [[], [], [], []] # Input 1, Filter Set 1
+mses_f2 = [[], [], [], []] # Input 2, Filter Set 1
+mses_f3 = [[], [], [], []] # Input 1, Filter Set 2
+mses_f4 = [[], [], [], []] # Input 2, Filter Set 2
+
+print("Starting Simulation...")
+
+for i, offset in enumerate(f_offsets):
+    print(f"  Simulating Offset: {offset} Hz")
+    for snr in snrs:
+        # 1. Filter Set 1 (using H0, H1, F0_1, F1_1)
+        mses_f1[i].append(calculate_MSE(1, add_noise=True, snr=snr, scrambling=False, freq_shift=offset, H0=H0, H1=H1, F0_1=F0_1, F1_1=F1_1, N=100))
+        mses_f2[i].append(calculate_MSE(2, add_noise=True, snr=snr, scrambling=False, freq_shift=offset, H0=H0, H1=H1, F0_1=F0_1, F1_1=F1_1, N=100))
+
+        # 2. Filter Set 2 (using H0_2, H1_2, F0_2, F1_2)
+        mses_f3[i].append(calculate_MSE(1, add_noise=True, snr=snr, scrambling=False, freq_shift=offset, H0=H0, H1=H1, F0_1=F0_2, F1_1=F1_2, N=100))
+        mses_f4[i].append(calculate_MSE(2, add_noise=True, snr=snr, scrambling=False, freq_shift=offset, H0=H0, H1=H1, F0_1=F0_2, F1_1=F1_2, N=100))
+
+# --- Plotting ---
+plt.figure(figsize=(16, 12))
+
+for i in range(4):
+    plt.subplot(2, 2, i+1)
+    plt.semilogy(range(21), mses_f1[i], 'o-', label='Input Type 1, Filter Set 1')
+    plt.semilogy(range(21), mses_f2[i], 's-', label='Input Type 2, Filter Set 1')
+    plt.semilogy(range(21), mses_f3[i], 'o-', label='Input Type 1, Filter Set 2') # Fixed Label
+    plt.semilogy(range(21), mses_f4[i], 's-', label='Input Type 2, Filter Set 2') # Fixed Label
+    plt.title('Frequency Offset: {:.2f} Hz'.format(f_offsets[i]))
+    plt.xlabel('SNR (dB)')
+    plt.ylabel('Mean Squared Error (MSE)')
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.legend()
+
 plt.tight_layout()
 plt.show()
+
+
 
 # # -------------------------------------- Apply Scrambling ----------------------------------------
 calculate_MSE(1, add_noise=False, snr=0, scrambling=True, H0=H0, H1=H1, F0_1=F0_1, F1_1=F1_1, N=1000)
@@ -55,26 +75,44 @@ calculate_MSE(2, add_noise=False, snr=0, scrambling=True, H0=H0, H1=H1, F0_1=F0_
 calculate_MSE(1, add_noise=False, snr=0, scrambling=True, H0=H0, H1=H1, F0_1=F0_2, F1_1=F1_2, N=1000)
 calculate_MSE(2, add_noise=False, snr=0, scrambling=True, H0=H0, H1=H1, F0_1=F0_2, F1_1=F1_2, N=1000)
 
-mse_option1_input1 = []
-mse_option1_input2 = []
-mse_option2_input1 = []
-mse_option2_input2 = []
-for snr in range(21):
-    mse_option1_input1.append(calculate_MSE(1, add_noise=True, snr=snr, scrambling=True, H0=H0, H1=H1, F0_1=F0_1, F1_1=F1_1, N=100))
-    mse_option1_input2.append(calculate_MSE(2, add_noise=True, snr=snr, scrambling=True, H0=H0, H1=H1, F0_1=F0_1, F1_1=F1_1, N=100))
-    mse_option2_input1.append(calculate_MSE(1, add_noise=True, snr=snr, scrambling=True, H0=H0, H1=H1, F0_1=F0_2, F1_1=F1_2, N=100))
-    mse_option2_input2.append(calculate_MSE(2, add_noise=True, snr=snr, scrambling=True, H0=H0, H1=H1, F0_1=F0_2, F1_1=F1_2, N=100))
 
-# plot MSE vs SNR
-plt.figure(figsize=(10, 6))
-plt.semilogy(range(21), mse_option1_input1, 'o-', label='Input Type 1, Filter Set 1')
-plt.semilogy(range(21), mse_option1_input2, 's-', label='Input Type 2, Filter Set 1')
-plt.semilogy(range(21), mse_option2_input1, 'o--', label='Input Type 1, Filter Set 2')
-plt.semilogy(range(21), mse_option2_input2, 's--', label='Input Type 2, Filter Set 2')
-plt.title('MSE vs SNR for Different Input Types and Filter Sets')
-plt.xlabel('SNR (dB)')
-plt.ylabel('Mean Squared Error (MSE)')
-plt.grid(True, which='both', linestyle='--', linewidth=0.5)
-plt.legend()
+f_offsets = [0, -2*78.125, 2*78.125, 25] 
+snrs = range(21)
+
+# Initialize storage for results
+# Each list contains 4 sub-lists (one for each offset)
+mses_f1 = [[], [], [], []] # Input 1, Filter Set 1
+mses_f2 = [[], [], [], []] # Input 2, Filter Set 1
+mses_f3 = [[], [], [], []] # Input 1, Filter Set 2
+mses_f4 = [[], [], [], []] # Input 2, Filter Set 2
+
+print("Starting Simulation...")
+
+for i, offset in enumerate(f_offsets):
+    print(f"  Simulating Offset: {offset} Hz")
+    for snr in snrs:
+        # 1. Filter Set 1 (using H0, H1, F0_1, F1_1)
+        mses_f1[i].append(calculate_MSE(1, add_noise=True, snr=snr, scrambling=True, freq_shift=offset, H0=H0, H1=H1, F0_1=F0_1, F1_1=F1_1, N=100))
+        mses_f2[i].append(calculate_MSE(2, add_noise=True, snr=snr, scrambling=True, freq_shift=offset, H0=H0, H1=H1, F0_1=F0_1, F1_1=F1_1, N=100))
+
+        # 2. Filter Set 2 (using H0_2, H1_2, F0_2, F1_2)
+        mses_f3[i].append(calculate_MSE(1, add_noise=True, snr=snr, scrambling=True, freq_shift=offset, H0=H0, H1=H1, F0_1=F0_2, F1_1=F1_2, N=100))
+        mses_f4[i].append(calculate_MSE(2, add_noise=True, snr=snr, scrambling=True, freq_shift=offset, H0=H0, H1=H1, F0_1=F0_2, F1_1=F1_2, N=100))
+
+# --- Plotting ---
+plt.figure(figsize=(16, 12))
+
+for i in range(4):
+    plt.subplot(2, 2, i+1)
+    plt.semilogy(range(21), mses_f1[i], 'o-', label='Input Type 1, Filter Set 1')
+    plt.semilogy(range(21), mses_f2[i], 's-', label='Input Type 2, Filter Set 1')
+    plt.semilogy(range(21), mses_f3[i], 'o-', label='Input Type 1, Filter Set 2') # Fixed Label
+    plt.semilogy(range(21), mses_f4[i], 's-', label='Input Type 2, Filter Set 2') # Fixed Label
+    plt.title('Frequency Offset: {:.2f} Hz'.format(f_offsets[i]))
+    plt.xlabel('SNR (dB)')
+    plt.ylabel('Mean Squared Error (MSE) With Scrambling')
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.legend()
+
 plt.tight_layout()
 plt.show()

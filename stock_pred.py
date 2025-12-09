@@ -131,17 +131,15 @@ def run_kalman_filter(data, volatilities, ws, R, Q):
     mse = error / len(volatilities)
 
     #plot results
-    plt.plot(data.index[ws:], data.values[ws:], label="Actual Price")
-    plt.plot(data.index[ws:], preds, label="Kalman Filter Estimate")
-    plt.title("Kalman Filter Stock Price Estimation - MSFT")
-    plt.xlabel("Date")
-    plt.ylabel("Price (USD)")
-    plt.legend()
-    plt.grid()
-    plt.show()
+    # plt.plot(data.index[ws:], data.values[ws:], label="Actual Price")
+    # plt.plot(data.index[ws:], preds, label="Kalman Filter Estimate")
+    # plt.title("Kalman Filter Stock Price Estimation - MSFT")
+    # plt.xlabel("Date")
+    # plt.ylabel("Price (USD)")
+    # plt.legend()
+    # plt.grid()
+    # plt.show()
     return preds, mse
-
-run_kalman_filter(data, volatilities, ws, R, Q)
 
 # def tune R
 def R_sweep():
@@ -227,4 +225,4 @@ def Q_sweep():
     plt.grid()
     plt.show()
 
-Q_sweep()
+R_sweep()

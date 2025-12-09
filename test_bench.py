@@ -134,31 +134,109 @@ for _ in range(1000):
     # Generate the input signal
     X_n_ap, bin_rep_h = generate_input(1, 1024)
     X_n_h, bin_rep_h = generate_input(2, 1024)
-    original_signal = X_n_h
+    original_signal = X_n_ap
 
     # 3. Perform Analysis
     low, v3 = fb.analysis(original_signal)
     low_me, v3_me = analysis_filter_block(H0, H1, original_signal)
     
+    # # plot low and low_me
+    # plt.figure(figsize=(12, 6))
+    # plt.subplot(2, 1, 1)
+    # plt.plot(low, label='Low Band', alpha=0.7)
+    # plt.title('Low Band Signal')
+    # plt.grid(True)
+    # plt.subplot(2, 1, 2)
+    # plt.plot(low_me, label='Low Band (Polyphase)', alpha=0.7)
+    # plt.title('Low Band Signal (Polyphase)')
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.show()
+
     llow, v2 = fb.analysis(low)  # Second level analysis on high band
     llow_me, v2_me = analysis_filter_block(H0, H1, low)  # Second level analysis on high band
+
+    # # plot llow and llow_me
+    # plt.figure(figsize=(12, 6))
+    # plt.subplot(2, 1, 1)
+    # plt.plot(llow, label='Low-Low Band', alpha=0.7)
+    # plt.title('Low-Low Band Signal')
+    # plt.grid(True)
+    # plt.subplot(2, 1, 2)
+    # plt.plot(llow_me, label='Low-Low Band (Polyphase)', alpha=0.7)
+    # plt.title('Low-Low Band Signal (Polyphase)')
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.show()
 
     v0, v1 = fb.analysis(llow)  # Third level analysis on hh band
     v0_me, v1_me = analysis_filter_block(H0, H1, llow)
 
+    # plot v0 and v1
+    # plt.figure(figsize=(12, 6))
+    # plt.subplot(2, 1, 1)
+    # plt.plot(v0, label='V0 Band', alpha=0.7)
+    # plt.title('V0 Band Signal')
+    # plt.grid(True)
+    # plt.subplot(2, 1, 2)
+    # plt.plot(v0_me, label='V0 Band (Polyphase)', alpha=0.7)
+    # plt.title('V0 Band Signal (Polyphase)')
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.show()
+
     # 4. Perform Synthesis
     reconstructed_signal = fb.synthesis(v0, v1)
-    reconstructed_signal_me = synthesis_filter(F0_2, F1_2, v0_me, v1_me)
+    reconstructed_signal_me = synthesis_filter(F0_1, F1_1, v0_me, v1_me)
+
+    # plot reconstructed_signal and reconstructed_signal_me
+    # plt.figure(figsize=(12, 6))
+    # plt.subplot(2, 1, 1)
+    # plt.plot(reconstructed_signal, label='Reconstructed Signal', alpha=0.7)
+    # plt.title('Reconstructed Signal')
+    # plt.grid(True)
+    # plt.subplot(2, 1, 2)
+    # plt.plot(reconstructed_signal_me, label='Reconstructed Signal (Polyphase)', alpha=0.7)
+    # plt.title('Reconstructed Signal (Polyphase)')
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.show()
 
     reconstructed_signal = fb.synthesis(reconstructed_signal, v2)
-    reconstructed_signal_me = synthesis_filter(F0_2, F1_2, reconstructed_signal_me, v2_me)
+    reconstructed_signal_me = synthesis_filter(F0_1, F1_1, reconstructed_signal_me, v2_me)
+
+    # plot reconstructed_signal and reconstructed_signal_me after second level synthesis
+    # plt.figure(figsize=(12, 6))
+    # plt.subplot(2, 1, 1)
+    # plt.plot(reconstructed_signal, label='Reconstructed Signal (After 2nd Level)', alpha=0.7)
+    # plt.title('Reconstructed Signal (After 2nd Level)')
+    # plt.grid(True)
+    # plt.subplot(2, 1, 2)
+    # plt.plot(reconstructed_signal_me, label='Reconstructed Signal (Polyphase, After 2nd Level)', alpha=0.7)
+    # plt.title('Reconstructed Signal (Polyphase, After 2nd Level)')
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.show()
 
     reconstructed_signal = fb.synthesis(reconstructed_signal, v3)
-    reconstructed_signal_me = synthesis_filter(F0_2, F1_2, reconstructed_signal_me, v3_me)
+    reconstructed_signal_me = synthesis_filter(F0_1, F1_1, reconstructed_signal_me, v3_me)
+
+    # plot final reconstructed_signal and reconstructed_signal_me
+    # plt.figure(figsize=(12, 6))
+    # plt.subplot(2, 1, 1)
+    # plt.plot(reconstructed_signal, label='Final Reconstructed Signal', alpha=0.7)
+    # plt.title('Final Reconstructed Signal')
+    # plt.grid(True)
+    # plt.subplot(2, 1, 2)
+    # plt.plot(reconstructed_signal_me, label='Final Reconstructed Signal (Polyphase)', alpha=0.7)
+    # plt.title('Final Reconstructed Signal (Polyphase)')
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.show()
 
     # 5. Compensate for Filter Delay (Group Delay)
     # For FIR filters of length N, the total delay of Analysis + Synthesis is approx N-1 samples
-    delay = 210 + 3
+    delay = 210 + 1
     reconstructed_shifted = reconstructed_signal_me
 
     # normalized signals for better visualization
