@@ -70,31 +70,31 @@ dat = yf.Ticker("MSFT")
 data = yf.download("MSFT", period="3y")['Close']
 
 # # plot closing prices
-# plt.plot(data.index, data)
-# plt.title("MSFT Closing Prices - Last 36 Months")
-# plt.xlabel("Date")
-# plt.ylabel("Closing Price (USD)")
-# plt.grid()
-# plt.show()
+plt.plot(data.index, data)
+plt.title("MSFT Closing Prices - Last 36 Months")
+plt.xlabel("Date")
+plt.ylabel("Closing Price (USD)")
+plt.grid()
+plt.show()
 
 # # plot daily returns
 returns = daily_returns(data.values)
-# plt.plot(data.index[1:], returns)
-# plt.title("MSFT Daily Returns - Last 36 Months")
-# plt.xlabel("Date")
-# plt.ylabel("Daily Return")
-# plt.grid()
-# plt.show()
+plt.plot(data.index[1:], returns)
+plt.title("MSFT Daily Returns - Last 36 Months")
+plt.xlabel("Date")
+plt.ylabel("Daily Return")
+plt.grid()
+plt.show()
 
 # # plot rolling volatility with a w-day window
 ws = 10
 volatilities = rolling_volatility(returns, window_size=ws)
-# plt.plot(data.index[ws:], volatilities)
-# plt.title("MSFT Rolling Volatility (10-day window) - Last 36 Months")
-# plt.xlabel("Date")
-# plt.ylabel("Rolling Volatility")
-# plt.grid()
-# plt.show()
+plt.plot(data.index[ws:], volatilities)
+plt.title("MSFT Rolling Volatility (10-day window) - Last 36 Months")
+plt.xlabel("Date")
+plt.ylabel("Rolling Volatility")
+plt.grid()
+plt.show()
 
 # Implement the Kalman Filter to estimate the stock price
 n_A = 1
@@ -112,7 +112,7 @@ P0 = np.eye(n_P) * 1.0
 x0 = np.array(data.values[10])   # initial pos=0, vel=1
 
 # simulate
-def run_kalman_filter(data, volatilities, ws, R, Q):
+def run_kalman_filter(data, volatilities, ws, R, Q, make_plots=False):
     kf = KalmanFilter(A, B, H, Q, R, P0, x0)
 
     i = 0
@@ -131,18 +131,20 @@ def run_kalman_filter(data, volatilities, ws, R, Q):
     mse = error / len(volatilities)
 
     #plot results
-    # plt.plot(data.index[ws:], data.values[ws:], label="Actual Price")
-    # plt.plot(data.index[ws:], preds, label="Kalman Filter Estimate")
-    # plt.title("Kalman Filter Stock Price Estimation - MSFT")
-    # plt.xlabel("Date")
-    # plt.ylabel("Price (USD)")
-    # plt.legend()
-    # plt.grid()
-    # plt.show()
+    if make_plots:
+        plt.plot(data.index[ws:], data.values[ws:], label="Actual Price")
+        plt.plot(data.index[ws:], preds, label="Kalman Filter Estimate")
+        plt.title("Kalman Filter Stock Price Estimation - MSFT")
+        plt.xlabel("Date")
+        plt.ylabel("Price (USD)")
+        plt.legend()
+        plt.grid()
+        plt.show()
     return preds, mse
 
 # def tune R
 def R_sweep():
+    print("Running R sweep...")
     mse_s = []
     N = 500
     max_r = 0.2
@@ -183,8 +185,10 @@ def R_sweep():
     plt.grid()
     plt.show()
 
+    print("R sweep complete.")
 # Q sweep
 def Q_sweep():
+    print("Running Q sweep...")
     mse_s = []
     N = 500
     max_q = 0.001
@@ -225,4 +229,8 @@ def Q_sweep():
     plt.grid()
     plt.show()
 
+    print("Q sweep complete.")
+
+run_kalman_filter(data, volatilities, ws, R, Q, make_plots=True)
 R_sweep()
+Q_sweep()
